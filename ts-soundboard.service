@@ -1,0 +1,16 @@
+# /etc/systemd/system/ts-soundboard.service
+[Unit]
+Description=TS Soundboard Bot
+After=network.target ts3client.service
+Requires=ts3client.service
+
+[Service]
+Type=simple
+User=sami
+WorkingDirectory=/opt/ts-soundboard
+ExecStart=/opt/ts-soundboard/.venv/bin/python /opt/ts-soundboard/bot.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

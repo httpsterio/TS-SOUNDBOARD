@@ -1,0 +1,17 @@
+# /etc/systemd/system/ts3client.service
+[Unit]
+Description=TeamSpeak 3 Client
+After=xvfb.service
+Requires=xvfb.service
+
+[Service]
+User=sami
+Environment=DISPLAY=:99
+WorkingDirectory=/opt/ts3-client
+ExecStartPre=/bin/sleep 2
+ExecStart=/opt/ts3-client/ts3client_runscript.sh
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+[clientquery]
+host = "127.0.0.1"
+port = 25639
+api_key = ""   # Tools → Options → Addons → ClientQuery in the TS3 client
+
+[bot]
+target_user_uid = ""        # base64 UID from TS3 client info, ends with `=`
+clips_dir = "clips"
+command_prefix = "!play"
+alsa_device = "plughw:2,0"  # loopback playback, card number from `aplay -l`
