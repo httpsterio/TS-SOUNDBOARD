@@ -10,7 +10,9 @@ User=sami
 WorkingDirectory=/opt/ts-soundboard
 ExecStart=/opt/ts-soundboard/.venv/bin/python /opt/ts-soundboard/bot.py
 Restart=on-failure
-RestartSec=5
+RestartSec=30
+StartLimitBurst=3
+StartLimitIntervalSec=120
 
 [Install]
 WantedBy=multi-user.target
