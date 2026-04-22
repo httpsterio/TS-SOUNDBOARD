@@ -85,6 +85,7 @@ def main() -> None:
     play_start_time: float = 0.0
     playback_failed: bool = False
     follow_error_reported: bool = False
+    following: bool = True
 
     def play(path: Path) -> None:
         nonlocal current_proc, current_path, play_start_time, playback_failed
@@ -142,6 +143,8 @@ def main() -> None:
 
             def follow_target(cid: str | None = None) -> None:
                 nonlocal follow_error_reported
+                if not following:
+                    return
                 if cid is None:
                     cid = get_target_cid()
                 if cid is None:
@@ -213,11 +216,18 @@ def main() -> None:
                                     stderr=subprocess.DEVNULL,
                                 )
 
+                    elif msg == "!follow":
+                        following = not following
+                        send_text(f"Following {'enabled' if following else 'disabled'}.")
+                        if following:
+                            follow_target()
+
                     elif msg == "!help":
                         send_text(
                             "!play <name> - play a clip\n"
                             "!stop - stop current clip\n"
-                            "!list - list available clips"
+                            "!list - list available clips\n"
+                            "!follow - toggle channel following"
                         )
 
                     elif msg == "!list":

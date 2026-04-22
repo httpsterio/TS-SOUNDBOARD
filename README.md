@@ -1,13 +1,13 @@
 # TS Soundboard Bot
 
-Bot that joins the channel where a target user is, listens for `!play <name>` commands in channel chat, and plays audio clips into the channel via an ALSA loopback sink.
+Bot that joins the channel where a target user is, listens for `!play <n>` commands in channel chat, and plays audio clips into the channel via an ALSA loopback sink.
 
 ## Prerequisites
 
 - Linux with systemd
 - Python 3.11+
 - `uv` (for venv management)
-- A TS3 Linux client installed somewhere accessible
+- TS3 Linux client installer (`TeamSpeak3-Client-linux_amd64-<version>.run` from teamspeak.com)
 
 ## 1. Install system packages
 
@@ -53,9 +53,33 @@ echo "snd-aloop" | sudo tee /etc/modules-load.d/snd-aloop.conf
 
 After loading, `aplay -l` should list a `Loopback` card. Note the card number (e.g. `card 2`). The playback device will be `plughw:<N>,0` and the capture device `plughw:<N>,1`.
 
-## 4. Install the TS3 client
+## 4. Install the TS3 client to `/opt/ts3-client`
 
-Download the Linux client from teamspeak.com and extract it. Any path works, just remember it for the service file later.
+Create the directory and give ownership to your user:
+
+```bash
+sudo mkdir -p /opt/ts3-client
+sudo chown $USER:$USER /opt/ts3-client
+```
+
+Download the installer from teamspeak.com (file looks like `TeamSpeak3-Client-linux_amd64-3.6.2.run`). The installer is a self-extracting archive.
+
+```bash
+cd /tmp
+chmod +x TeamSpeak3-Client-linux_amd64-3.6.2.run
+./TeamSpeak3-Client-linux_amd64-3.6.2.run
+```
+
+Accept the license (space through, type `y`). It extracts to `/tmp/TeamSpeak3-Client-linux_amd64/`. Move the contents to `/opt/ts3-client`:
+
+```bash
+mv /tmp/TeamSpeak3-Client-linux_amd64/* /opt/ts3-client/
+```
+
+The two files that matter:
+
+- `/opt/ts3-client/ts3client_linux_amd64` — the binary
+- `/opt/ts3-client/ts3client_runscript.sh` — wrapper that sets up Qt library paths, use this to launch
 
 If `./ts3client_linux_amd64` fails with a missing library error, install it:
 
@@ -78,7 +102,7 @@ ps aux | grep -i xorg
 Look for the `:N` in the Xorg process args. Launch the client into that display:
 
 ```bash
-DISPLAY=:<N> /path/to/ts3-client/ts3client_runscript.sh
+DISPLAY=:<N> /opt/ts3-client/ts3client_runscript.sh
 ```
 
 If there is no desktop session at all, start a temporary Xvfb and VNC into it:
@@ -87,13 +111,13 @@ If there is no desktop session at all, start a temporary Xvfb and VNC into it:
 Xvfb :99 -screen 0 1024x768x24 &
 x11vnc -display :99 -nopw -listen localhost &
 # then SSH-tunnel 5900 and connect with a VNC client
-DISPLAY=:99 /path/to/ts3-client/ts3client_runscript.sh
+DISPLAY=:99 /opt/ts3-client/ts3client_runscript.sh
 ```
 
 In the client:
 
 1. Connect to the server, then **Bookmarks → Add Bookmark**. Enable **Connect on startup**.
-2. **Tools → Options → ClientQuery** — copy the API key into `config.toml` as `api_key`. Leave logging and telnet unchecked.
+2. **Tools → Options → ClientQuery** — copy the API key, you'll need it for `config.toml` later. Leave logging and telnet unchecked.
 3. **Tools → Options → Capture** — set mode to ALSA, device to the loopback capture (e.g. `plughw:2,1` where `2` is your loopback card number from step 3). Set activation mode to **Continuous**.
 4. On the same Capture screen, disable VAD, denoiser, echo cancellation, AGC, typing suppression — everything.
 5. **Tools → Options → Playback** — set any ALSA device. The bot doesn't need to hear, but if this is left empty TS3 may mute itself on startup defensively.
@@ -110,10 +134,25 @@ ls /tmp/.X*-lock 2>/dev/null
 
 Any file like `.X1-lock` means display `:1` is in use. Pick a free number (`:99` is a safe default). Use the same number in both `xvfb.service` and `ts3client.service`.
 
-## 7. Install the bot
+## 7. Deploy the bot to `/opt/ts-soundboard`
+
+Create the directory and give ownership to your user:
 
 ```bash
+sudo mkdir -p /opt/ts-soundboard
+sudo chown $USER:$USER /opt/ts-soundboard
+```
+
+Clone the repo into it:
+
+```bash
+git clone <repo-url> /opt/ts-soundboard
 cd /opt/ts-soundboard
+```
+
+Create the venv and install dependencies:
+
+```bash
 uv venv
 uv pip install ts3
 ```
@@ -133,10 +172,10 @@ cp config.toml.example config.toml
 Edit the three `.service` files in this repo:
 
 - `xvfb.service` — set `User=`, pick the display number (`:99`)
-- `ts3client.service` — set `User=`, `Environment=DISPLAY=:99`, `WorkingDirectory=` to the TS3 client path, `ExecStart=` to the runscript path
-- `ts-soundboard.service` — set `User=`, `WorkingDirectory=` and `ExecStart=` paths
+- `ts3client.service` — set `User=`, `Environment=DISPLAY=:99`
+- `ts-soundboard.service` — set `User=`
 
-Then:
+Paths assume `/opt/ts3-client` and `/opt/ts-soundboard`. If you put things elsewhere, update the `WorkingDirectory=` and `ExecStart=` lines to match.
 
 ```bash
 sudo cp xvfb.service ts3client.service ts-soundboard.service /etc/systemd/system/
@@ -155,7 +194,7 @@ The bot logs should show it connecting to ClientQuery and finding the target use
 
 ## Adding clips
 
-Drop audio files into `clips/`. Supported formats: mp3, ogg, wav.
+Drop audio files into `/opt/ts-soundboard/clips/`. Supported formats: mp3, ogg, wav.
 
 ```
 clips/
@@ -171,7 +210,7 @@ Trigger from TS3 channel chat:
 !play airhorn
 ```
 
-The bot tries `<name>.mp3` first, then `.ogg`, then `.wav`. If none exist, the command is silently ignored.
+The bot tries `<n>.mp3` first, then `.ogg`, then `.wav`. If none exist, the command is silently ignored.
 
 New clips are picked up immediately. No restart needed.
 
