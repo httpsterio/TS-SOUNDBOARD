@@ -198,21 +198,36 @@ Drop audio files into `/opt/ts-soundboard/clips/`. Supported formats: mp3, ogg, 
 
 ```
 clips/
-  hello.mp3
-  airhorn.ogg
-  bruh.wav
+    hello.mp3
+    airhorn.ogg
+    bruh.wav
+```
+The bot tries `<name>.mp3` first, then `.ogg`, then `.wav`. New clips are picked up immediately, no restart needed.
+
+### Normalizing clips
+
+The bot transmits clips at whatever level the source files are. Unnormalized clips will be inconsistent and likely too loud. Keep originals in `original-clips/` and normalize them into `clips/`:
+
+```bash
+cd /opt/ts-soundboard
+mkdir -p original-clips clips
+# put raw files in original-clips/ then:
+for f in original-clips/*.mp3 original-clips/*.ogg original-clips/*.wav; do
+  [ -f "$f" ] || continue
+  ffmpeg -y -i "$f" -af loudnorm=I=-30:TP=-1.5:LRA=11 -ar 48000 "clips/$(basename "$f")"
+done
 ```
 
-Trigger from TS3 channel chat:
+`I=-30` is a low target suitable for a soundboard mixed into voice chat. Lower the number for quieter, raise for louder.
 
-```
-!play hello
-!play airhorn
-```
+## Commands
 
-The bot tries `<n>.mp3` first, then `.ogg`, then `.wav`. If none exist, the command is silently ignored.
+Sent in the TS3 channel chat where the bot is currently located:
 
-New clips are picked up immediately. No restart needed.
+- `!play <name>` — play a clip from `clips/`
+- `!stop` — stop playback immediately
+- `!list` — list available clips
+- `!follow` — toggle whether the bot follows the target user across channels (default in `config.toml`)
 
 ## Troubleshooting
 
@@ -236,3 +251,10 @@ New clips are picked up immediately. No restart needed.
 - `alsa_device` in `config.toml` must point to loopback playback (`plughw:<N>,0`).
 - TS3's Capture device must be the matching loopback capture (`plughw:<N>,1`).
 - Card number `<N>` comes from `aplay -l`.
+
+**Clips are way too loud or too quiet**
+
+- Normalize them (see "Normalizing clips" above). The bot's volume setting is a multiplier, not a normalizer.
+- Verify TS3 capture preprocessing has AGC disabled: `sqlite3 ~/.ts3client/settings.db "SELECT value FROM Profiles WHERE key='Capture/Default/PreProcessing';" | grep agc`
+
+- Alternatively you can set the volume in config.toml, for clips that are close to hitting 0db the default volume value might be too high.

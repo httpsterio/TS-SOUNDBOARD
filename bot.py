@@ -79,13 +79,14 @@ def main() -> None:
     target_uid: str = bot_cfg["target_user_uid"]
     prefix: str = bot_cfg["command_prefix"]
     alsa_device: str = bot_cfg.get("alsa_device", "hw:Loopback,0")
+    volume: float = float(bot_cfg.get("volume", 1.0))
 
     current_proc: subprocess.Popen | None = None
     current_path: Path | None = None
     play_start_time: float = 0.0
     playback_failed: bool = False
     follow_error_reported: bool = False
-    following: bool = True
+    following: bool = bool(bot_cfg.get("follow", True))
 
     def play(path: Path) -> None:
         nonlocal current_proc, current_path, play_start_time, playback_failed
@@ -96,7 +97,7 @@ def main() -> None:
         play_start_time = time.time()
         playback_failed = False
         current_proc = subprocess.Popen(
-            ["ffmpeg", "-nostdin", "-i", str(path), "-f", "alsa", alsa_device],
+            ["ffmpeg", "-nostdin", "-i", str(path), "-af", f"volume={volume:.3f}", "-f", "alsa", alsa_device],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
@@ -210,7 +211,7 @@ def main() -> None:
                                 current_proc = subprocess.Popen(
                                     ["ffmpeg", "-nostdin", "-ss", f"{elapsed:.3f}",
                                      "-i", str(current_path),
-                                     "-af", "afade=t=out:st=0:d=0.25", "-t", "0.25",
+                                     "-af", f"volume={volume:.3f},afade=t=out:st=0:d=0.25", "-t", "0.25",
                                      "-f", "alsa", alsa_device],
                                     stdout=subprocess.DEVNULL,
                                     stderr=subprocess.DEVNULL,
