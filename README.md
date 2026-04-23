@@ -1,6 +1,8 @@
 # TS Soundboard Bot
 
-Bot that joins the channel where a target user is, listens for `!play <n>` commands in channel chat, and plays audio clips into the channel via an ALSA loopback sink.
+A TeamSpeak soundboard bot. Plays audio clips into a TS channel on `!play <name>`, follows a target user across channels.
+
+Runs on the same Linux machine as the TS server. A real TS3 client runs headlessly via Xvfb and is controlled via ClientQuery from a Python script. Audio is piped through an ALSA loopback into the client's mic input.
 
 ## Prerequisites
 
@@ -154,7 +156,7 @@ Create the venv and install dependencies:
 
 ```bash
 uv venv
-uv pip install ts3
+uv pip install -r requirements.txt
 ```
 
 Copy the example config and fill in the blanks:
